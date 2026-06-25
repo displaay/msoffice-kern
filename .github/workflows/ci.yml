@@ -1,0 +1,37 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  lint-type:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e ".[dev]"
+      - run: ruff check src tests
+      - run: mypy
+
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.10", "3.11", "3.12"]
+        # Lowest supported, the version the goldens were generated against, and
+        # the newest in range -- the byte-identical guarantee must hold across
+        # the whole supported fonttools span (pyproject: >=4.61,<5).
+        fonttools: ["==4.61.*", "==4.62.*", "<5"]
+    name: py${{ matrix.python }} fonttools${{ matrix.fonttools }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "${{ matrix.python }}"
+      - run: pip install -e ".[dev]" "fonttools${{ matrix.fonttools }}"
+      - run: pytest -q

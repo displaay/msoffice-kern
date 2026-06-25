@@ -1,0 +1,64 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "displaay-msoffice-kern"
+version = "0.1.0"
+description = "Derive a PowerPoint/MS Office-safe legacy 'kern' table from a font's GPOS kerning."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Displaay" }]
+keywords = ["fonts", "kerning", "gpos", "powerpoint", "ms-office", "fonttools"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Topic :: Text Processing :: Fonts",
+    "License :: OSI Approved :: MIT License",
+]
+# fontTools serialises the final 'kern' table, so the byte output depends on its
+# version. The golden tests lock the produced bytes, and the CI matrix
+# (.github/workflows/ci.yml) runs them across the whole supported fonttools
+# range -- so this constraint is verified byte-stable, not merely asserted.
+dependencies = ["fonttools>=4.61,<5"]
+
+[project.optional-dependencies]
+test = ["pytest>=7"]
+dev = ["pytest>=7", "pytest-cov", "ruff", "mypy", "fonttools>=4.61,<5"]
+
+[project.urls]
+Homepage = "https://github.com/displaay/displaay-msoffice-kern"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/displaay_msoffice_kern"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"src/displaay_msoffice_kern/py.typed" = "displaay_msoffice_kern/py.typed"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "N", "ANN"]
+# fontTools ships no type stubs, so objects read straight from a font
+# (ValueRecord, subtable, lookup) are unavoidably typed `Any` at the boundary.
+ignore = ["ANN401"]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests build fixtures with fontTools objects and use short fixture helpers;
+# full annotations and module-level naming rules add noise without value here.
+"tests/*" = ["ANN", "N"]
+
+[tool.mypy]
+python_version = "3.10"
+packages = ["displaay_msoffice_kern"]
+strict = true
+
+# fontTools ships no complete type stubs.
+[[tool.mypy.overrides]]
+module = "fontTools.*"
+ignore_missing_imports = true
