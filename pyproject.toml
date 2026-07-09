@@ -13,8 +13,13 @@ authors = [{ name = "Displaay" }]
 keywords = ["fonts", "kerning", "gpos", "powerpoint", "ms-office", "fonttools"]
 classifiers = [
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
     "Topic :: Text Processing :: Fonts",
     "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Typing :: Typed",
 ]
 # fontTools serialises the final 'kern' table, so the byte output depends on its
 # version. The golden tests lock the produced bytes, and the CI matrix
@@ -27,7 +32,9 @@ test = ["pytest>=7"]
 dev = ["pytest>=7", "pytest-cov", "ruff", "mypy", "fonttools>=4.61,<5"]
 
 [project.urls]
-Homepage = "https://github.com/displaay/displaay-msoffice-kern"
+Homepage = "https://github.com/displaay/msoffice-kern"
+Repository = "https://github.com/displaay/msoffice-kern"
+Issues = "https://github.com/displaay/msoffice-kern/issues"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/displaay_msoffice_kern"]
