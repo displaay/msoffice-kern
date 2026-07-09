@@ -2,6 +2,12 @@
 
 import re
 
+# Hard capacity of one format-0 'kern' subtable: the 16-bit subtable length
+# field covers the 14 header bytes plus 6 bytes per pair -> (65535 - 14) // 6.
+# Beyond this, fontTools truncates the length field and GDI misreads the table.
+MAX_FORMAT0_PAIRS = 10_920
+
+# Default cap, with a safety margin below the hard format limit.
 MAX_LEGACY_PAIRS = 10_900
 
 DEFAULT_PROFILE = "latin-extended-text"

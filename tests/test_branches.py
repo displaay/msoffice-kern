@@ -7,16 +7,20 @@ synthetic-font helpers from ``test_kern_selection``.
 from types import SimpleNamespace
 
 import pytest
+from fontTools.ttLib import newTable
 from test_kern_selection import build_test_font, roundtrip
 
-from displaay_msoffice_kern import (
+from msoffice_kern import (
+    MAX_FORMAT0_PAIRS,
     LegacyKernError,
     NoGposKernError,
     ReservedPairsOverflowError,
+    VariableFontError,
     apply_legacy_kern,
+    replace_legacy_kern,
 )
-from displaay_msoffice_kern.candidates import build_legacy_kern_pairs
-from displaay_msoffice_kern.constants import (
+from msoffice_kern.candidates import build_legacy_kern_pairs
+from msoffice_kern.constants import (
     DEFAULT_PROFILE,
     DIACRITIC_FACTOR,
     DIGIT_FREQUENCY,
@@ -25,16 +29,16 @@ from displaay_msoffice_kern.constants import (
     PUNCTUATION_FREQUENCIES,
     SPACE_FREQUENCY,
 )
-from displaay_msoffice_kern.gpos import (
+from msoffice_kern.gpos import (
     PairPosSubtable,
     accumulate_pair_value,
     gpos_kern_value,
     kern_lookups,
     x_advance,
 )
-from displaay_msoffice_kern.reduce import prune_pairs_by_min_abs_value
-from displaay_msoffice_kern.scoring import build_glyph_score_data, codepoint_frequency
-from displaay_msoffice_kern.whitelist import is_covered_codepoint
+from msoffice_kern.reduce import prune_pairs_by_min_abs_value
+from msoffice_kern.scoring import build_glyph_score_data, codepoint_frequency
+from msoffice_kern.whitelist import is_covered_codepoint
 
 
 class _FakeSubtable:
@@ -319,3 +323,94 @@ def test_apply_twice_replaces_existing_kern():
     # the second run must delete the existing 'kern' and rebuild it identically
     assert apply_legacy_kern(font).applied
     assert font["kern"].compile(font) == first_bytes
+
+
+# --- pre-publish hardening: strict=False must never crash on one font --------
+
+def test_variable_font_is_refused():
+    font = roundtrip(build_test_font())
+    font["fvar"] = newTable("fvar")
+    result = apply_legacy_kern(font)
+    assert result.applied is False
+    assert "variable" in result.reason
+    assert "kern" not in font
+    with pytest.raises(VariableFontError):
+        apply_legacy_kern(font, strict=True)
+
+
+def test_max_pairs_out_of_range_raises_regardless_of_strict():
+    font = roundtrip(build_test_font())
+    for bad in (0, -1, MAX_FORMAT0_PAIRS + 1):
+        with pytest.raises(ValueError, match="max_pairs"):
+            apply_legacy_kern(font, max_pairs=bad)
+
+
+def test_replace_legacy_kern_over_format0_capacity_raises():
+    font = roundtrip(build_test_font())
+    pairs = {("A", f"g{i}"): -10 for i in range(MAX_FORMAT0_PAIRS + 1)}
+    with pytest.raises(ValueError, match="format-0"):
+        replace_legacy_kern(font, pairs)
+
+
+def test_missing_cmap_not_applied_and_strict_raises():
+    font = roundtrip(build_test_font())
+    del font["cmap"]
+    result = apply_legacy_kern(font)
+    assert result.applied is False
+    assert "cmap" in result.reason
+    assert "kern" not in font
+    with pytest.raises(LegacyKernError):
+        apply_legacy_kern(font, strict=True)
+
+
+def test_gpos_feature_list_none_not_applied():
+    font = roundtrip(build_test_font())
+    font["GPOS"].table.FeatureList = None
+    result = apply_legacy_kern(font)
+    assert result.applied is False
+    assert "feature list" in result.reason
+    with pytest.raises(NoGposKernError):
+        apply_legacy_kern(font, strict=True)
+
+
+def test_gpos_lookup_list_none_not_applied():
+    font = roundtrip(build_test_font())
+    font["GPOS"].table.LookupList = None
+    result = apply_legacy_kern(font)
+    assert result.applied is False
+    assert "lookup list" in result.reason
+    with pytest.raises(LegacyKernError):
+        apply_legacy_kern(font, strict=True)
+
+
+def test_kern_lookup_index_out_of_range_not_applied():
+    font = roundtrip(build_test_font())
+    for record in font["GPOS"].table.FeatureList.FeatureRecord:
+        if record.FeatureTag == "kern":
+            record.Feature.LookupListIndex = [99]
+    result = apply_legacy_kern(font)
+    assert result.applied is False
+    assert "lookup 99" in result.reason
+
+
+def test_format1_coverage_pairset_mismatch_raises_typed_error():
+    fake = SimpleNamespace(
+        Format=1,
+        Coverage=SimpleNamespace(glyphs=["A", "B"]),
+        PairSet=[SimpleNamespace(PairValueRecord=[])],
+    )
+    with pytest.raises(LegacyKernError, match="format-1"):
+        PairPosSubtable(fake)
+
+
+def test_format2_none_classdefs_treated_as_class_zero():
+    fake = SimpleNamespace(
+        Format=2,
+        Coverage=SimpleNamespace(glyphs=["A"]),
+        ClassDef1=None,
+        ClassDef2=None,
+        Class1Record=[SimpleNamespace(Class2Record=[SimpleNamespace(Value1=None)])],
+    )
+    subtable = PairPosSubtable(fake)
+    # a NULL ClassDef means "every glyph in class 0", not a crash
+    assert subtable.value_and_classes("A", "B") == (0, (0, 0))

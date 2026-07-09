@@ -1,4 +1,4 @@
-"""displaay-msoffice-kern -- derive a PowerPoint/MS Office-safe legacy ``kern``
+"""msoffice-kern -- derive a PowerPoint/MS Office-safe legacy ``kern``
 table from a font's GPOS kerning.
 
 PowerPoint and the GDI text paths in MS Office do not read GPOS kerning; they
@@ -14,7 +14,7 @@ bytes.
 
 High-level use::
 
-    from displaay_msoffice_kern import apply_legacy_kern
+    from msoffice_kern import apply_legacy_kern
     result = apply_legacy_kern(font)          # mutates `font` in place
     if result.applied:
         ...                                    # font now has the kern table
@@ -31,6 +31,7 @@ from .constants import (
     LATIN_EXTENDED_TEXT_RANGES,
     LETTER_FREQUENCIES,
     LOWER_TO_UPPER_FACTOR,
+    MAX_FORMAT0_PAIRS,
     MAX_LEGACY_PAIRS,
     PUNCTUATION_FREQUENCIES,
     REMOVED_REASON_BELOW_MIN_ABS_VALUE,
@@ -42,6 +43,7 @@ from .exceptions import (
     LegacyKernError,
     NoGposKernError,
     ReservedPairsOverflowError,
+    VariableFontError,
 )
 from .gpos import (
     PairPosSubtable,
@@ -85,7 +87,7 @@ __version__ = "0.1.0"
 #   * Tier 2 -- lower-level building blocks (GPOS readers, scoring, the
 #     reduction primitives, whitelist predicates and frequency tables). They are
 #     exported for advanced use and are equally reachable from their submodules,
-#     e.g. ``from displaay_msoffice_kern.reduce import reduce_pairs_to_max_count``.
+#     e.g. ``from msoffice_kern.reduce import reduce_pairs_to_max_count``.
 #     Narrowing Tier 2 out of the top level is deferred until the depending
 #     applications are confirmed not to import these names from the top level.
 __all__ = [
@@ -96,6 +98,8 @@ __all__ = [
     "LegacyKernError",
     "NoGposKernError",
     "ReservedPairsOverflowError",
+    "VariableFontError",
+    "MAX_FORMAT0_PAIRS",
     "MAX_LEGACY_PAIRS",
     "DEFAULT_MIN_ABS_VALUE",
     "DEFAULT_PROFILE",

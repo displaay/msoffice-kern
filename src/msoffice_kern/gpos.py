@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from .exceptions import NoGposKernError
+from .exceptions import LegacyKernError, NoGposKernError
 
 if TYPE_CHECKING:
     from fontTools.ttLib import TTFont
@@ -30,12 +30,23 @@ class PairPosSubtable:
             getattr(getattr(subtable, "Coverage", None), "glyphs", [])
         )
         self.pair_sets: dict[str, dict[str, int]] = {}
+        self.class_defs_1: dict[str, int] = {}
+        self.class_defs_2: dict[str, int] = {}
         if self.format == 1:
-            for first, pair_set in zip(
-                subtable.Coverage.glyphs, subtable.PairSet, strict=True
-            ):
+            coverage_glyphs = list(
+                getattr(getattr(subtable, "Coverage", None), "glyphs", None) or []
+            )
+            pair_sets = getattr(subtable, "PairSet", None) or []
+            if len(coverage_glyphs) != len(pair_sets):
+                raise LegacyKernError(
+                    "Malformed GPOS PairPos format-1 subtable: coverage lists "
+                    f"{len(coverage_glyphs)} glyphs but there are "
+                    f"{len(pair_sets)} pair sets."
+                )
+            for first, pair_set in zip(coverage_glyphs, pair_sets, strict=True):
                 second_values: dict[str, int] = {}
-                for pair_record in pair_set.PairValueRecord:
+                records = getattr(pair_set, "PairValueRecord", None) or []
+                for pair_record in records:
                     # Legacy kern is the gap *between* the pair, i.e. only the
                     # advance of the left glyph (Value1.XAdvance). Value2 moves
                     # the pen after the right glyph and must not be added in.
@@ -44,6 +55,15 @@ class PairPosSubtable:
                     )
                 if second_values:
                     self.pair_sets[first] = second_values
+        elif self.format == 2:
+            # NULL ClassDef offsets decompile to None; treat them as "all
+            # glyphs in class 0" instead of crashing on attribute access.
+            self.class_defs_1 = (
+                getattr(getattr(subtable, "ClassDef1", None), "classDefs", None) or {}
+            )
+            self.class_defs_2 = (
+                getattr(getattr(subtable, "ClassDef2", None), "classDefs", None) or {}
+            )
 
     def value_and_classes(
         self, left: str, right: str
@@ -66,15 +86,17 @@ class PairPosSubtable:
         if self.format == 2:
             if left not in self.coverage:
                 return None, None
-            class_1 = self.subtable.ClassDef1.classDefs.get(left, 0)
-            class_2 = self.subtable.ClassDef2.classDefs.get(right, 0)
+            class_1 = self.class_defs_1.get(left, 0)
+            class_2 = self.class_defs_2.get(right, 0)
             try:
                 record = self.subtable.Class1Record[class_1].Class2Record[class_2]
-            except IndexError:
+                # Value1.XAdvance only (see __init__); the cell may
+                # legitimately cover the pair with a 0 adjustment.
+                value = x_advance(record.Value1)
+            except (AttributeError, IndexError, TypeError):
+                # out-of-range class index or a NULL record in malformed data
                 return None, None
-            # Value1.XAdvance only (see __init__); the cell may legitimately
-            # cover the pair with a 0 adjustment.
-            return x_advance(record.Value1), (class_1, class_2)
+            return value, (class_1, class_2)
         return None, None
 
     def value(self, left: str, right: str) -> int | None:
@@ -99,20 +121,41 @@ def kern_lookups(font: TTFont) -> list[list[PairPosSubtable]]:
         raise NoGposKernError("Input font has no GPOS table.")
 
     gpos = font["GPOS"].table
+    # Subset or minimal fonts may carry a GPOS whose FeatureList/LookupList
+    # decompiled to None; treat those as "no usable kern", not a crash.
+    feature_list = getattr(gpos, "FeatureList", None)
+    if feature_list is None:
+        raise NoGposKernError("Input font has GPOS, but no feature list.")
+
     lookup_indices: list[int] = []
-    for feature_record in gpos.FeatureList.FeatureRecord:
+    for feature_record in getattr(feature_list, "FeatureRecord", None) or []:
         if feature_record.FeatureTag != "kern":
             continue
-        for lookup_index in feature_record.Feature.LookupListIndex:
+        feature = feature_record.Feature
+        if feature is None:
+            continue
+        for lookup_index in feature.LookupListIndex or []:
             if lookup_index not in lookup_indices:
                 lookup_indices.append(lookup_index)
 
     if not lookup_indices:
         raise NoGposKernError("Input font has GPOS, but no kern feature.")
 
+    lookup_list = getattr(gpos, "LookupList", None)
+    all_lookups = getattr(lookup_list, "Lookup", None) or []
+    if not all_lookups:
+        raise LegacyKernError(
+            "Malformed GPOS: kern feature present, but the lookup list is missing."
+        )
+
     lookups: list[list[PairPosSubtable]] = []
     for lookup_index in lookup_indices:
-        lookup = gpos.LookupList.Lookup[lookup_index]
+        if lookup_index >= len(all_lookups):
+            raise LegacyKernError(
+                f"Malformed GPOS: kern feature references lookup {lookup_index}, "
+                f"but the lookup list has only {len(all_lookups)} entries."
+            )
+        lookup = all_lookups[lookup_index]
         subtables = pairpos_subtables_for_lookup(lookup)
         if subtables:
             lookups.append(subtables)

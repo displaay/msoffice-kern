@@ -6,6 +6,7 @@ import unicodedata
 from typing import TYPE_CHECKING
 
 from .constants import BASIC_PUNCTUATION_CODEPOINTS, LATIN_EXTENDED_TEXT_RANGES
+from .exceptions import LegacyKernError
 
 if TYPE_CHECKING:
     from fontTools.ttLib import TTFont
@@ -48,6 +49,8 @@ def is_latin_extended_letter_codepoint(codepoint: int) -> bool:
 
 
 def unicode_glyph_map(font: TTFont) -> dict[str, set[int]]:
+    if "cmap" not in font:
+        raise LegacyKernError("Input font has no cmap table.")
     glyph_to_codepoints: dict[str, set[int]] = {}
     for cmap in font["cmap"].tables:
         if not cmap.isUnicode():

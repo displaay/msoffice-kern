@@ -22,7 +22,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python: ["3.10", "3.11", "3.12"]
+        python: ["3.10", "3.11", "3.12", "3.13", "3.14"]
         # Lowest supported, the version the goldens were generated against, and
         # the newest in range -- the byte-identical guarantee must hold across
         # the whole supported fonttools span (pyproject: >=4.61,<5).

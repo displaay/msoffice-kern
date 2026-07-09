@@ -13,8 +13,8 @@ from fontTools.pens.t2CharStringPen import T2CharStringPen
 from fontTools.pens.ttGlyphPen import TTGlyphPen
 from fontTools.ttLib import TTFont
 
-import displaay_msoffice_kern as dmk
-from displaay_msoffice_kern import (
+import msoffice_kern as dmk
+from msoffice_kern import (
     REMOVED_REASON_BELOW_MIN_ABS_VALUE,
     REMOVED_REASON_OVER_MAX_PAIRS,
     NoGposKernError,

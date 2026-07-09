@@ -1,4 +1,4 @@
-# displaay-msoffice-kern
+# msoffice-kern
 
 Derive a **PowerPoint / MS Office–safe legacy `kern` table** from a font's GPOS
 kerning, without touching GPOS.
@@ -16,14 +16,14 @@ yields the same bytes.
 ## Installation
 
 ```bash
-pip install displaay-msoffice-kern
+pip install msoffice-kern
 ```
 
 ## Usage
 
 ```python
 from fontTools.ttLib import TTFont
-from displaay_msoffice_kern import apply_legacy_kern
+from msoffice_kern import apply_legacy_kern
 
 font = TTFont("Family-Regular.ttf")      # a compiled static TTF/OTF
 result = apply_legacy_kern(font)         # mutates font in place; GPOS untouched
@@ -34,9 +34,15 @@ print(result.summary())
 
 `apply_legacy_kern(font, *, max_pairs=10900, min_abs_value=5,
 profile="latin-extended-text", strict=False)` returns a `LegacyKernResult`.
-With `strict=False` (default) a font without usable kerning yields
-`applied=False` instead of raising — so a batch never fails on one font. The
-low-level primitives (`kern_lookups`, `build_legacy_kern_pairs`,
+With `strict=False` (default) a font whose kerning cannot be derived — no
+usable GPOS kern, no cmap, malformed GPOS, or a variable font — yields
+`applied=False` instead of raising, so a batch never fails on one font; with
+`strict=True` the typed exceptions propagate. Variable fonts are always
+refused (`VariableFontError`): the legacy table could only encode the default
+instance, so derive it from exported static instances instead. `max_pairs` is
+validated against the format-0 hard limit of 10 920 pairs
+(`MAX_FORMAT0_PAIRS`, the subtable's 16-bit length capacity). The low-level
+primitives (`kern_lookups`, `build_legacy_kern_pairs`,
 `reduce_pairs_to_max_count`, `replace_legacy_kern`, …) are exported too.
 
 ## Selection algorithm

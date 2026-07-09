@@ -7,16 +7,16 @@ the atomic cap reducer, where the subtlest bugs hide.
 import pytest
 from test_kern_selection import build_test_font, roundtrip
 
-from displaay_msoffice_kern import (
+from msoffice_kern import (
     DEFAULT_MIN_ABS_VALUE,
     DEFAULT_PROFILE,
     REMOVED_REASON_BELOW_MIN_ABS_VALUE,
     REMOVED_REASON_OVER_MAX_PAIRS,
     apply_legacy_kern,
 )
-from displaay_msoffice_kern.candidates import build_legacy_kern_pairs
-from displaay_msoffice_kern.gpos import kern_lookups
-from displaay_msoffice_kern.reduce import (
+from msoffice_kern.candidates import build_legacy_kern_pairs
+from msoffice_kern.gpos import kern_lookups
+from msoffice_kern.reduce import (
     effective_min_abs_value,
     reduce_legacy_kern_pairs,
     reserved_balanced_pairs,

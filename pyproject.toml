@@ -1,14 +1,17 @@
 [build-system]
-requires = ["hatchling"]
+# hatchling >=1.27 for PEP 639 license expressions
+requires = ["hatchling>=1.27"]
 build-backend = "hatchling.build"
 
 [project]
-name = "displaay-msoffice-kern"
-version = "0.1.0"
+name = "msoffice-kern"
+# single source of truth: __version__ in src/msoffice_kern/__init__.py
+dynamic = ["version"]
 description = "Derive a PowerPoint/MS Office-safe legacy 'kern' table from a font's GPOS kerning."
 readme = "README.md"
 requires-python = ">=3.10"
-license = { text = "MIT" }
+license = "MIT"
+license-files = ["LICENSE"]
 authors = [{ name = "Displaay" }]
 keywords = ["fonts", "kerning", "gpos", "powerpoint", "ms-office", "fonttools"]
 classifiers = [
@@ -16,8 +19,9 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Topic :: Text Processing :: Fonts",
-    "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Typing :: Typed",
 ]
@@ -36,11 +40,14 @@ Homepage = "https://github.com/displaay/msoffice-kern"
 Repository = "https://github.com/displaay/msoffice-kern"
 Issues = "https://github.com/displaay/msoffice-kern/issues"
 
+[tool.hatch.version]
+path = "src/msoffice_kern/__init__.py"
+
 [tool.hatch.build.targets.wheel]
-packages = ["src/displaay_msoffice_kern"]
+packages = ["src/msoffice_kern"]
 
 [tool.hatch.build.targets.wheel.force-include]
-"src/displaay_msoffice_kern/py.typed" = "displaay_msoffice_kern/py.typed"
+"src/msoffice_kern/py.typed" = "msoffice_kern/py.typed"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -62,7 +69,7 @@ ignore = ["ANN401"]
 
 [tool.mypy]
 python_version = "3.10"
-packages = ["displaay_msoffice_kern"]
+packages = ["msoffice_kern"]
 strict = true
 
 # fontTools ships no complete type stubs.

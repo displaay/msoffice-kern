@@ -17,11 +17,16 @@ from .candidates import build_legacy_kern_pairs
 from .constants import (
     DEFAULT_MIN_ABS_VALUE,
     DEFAULT_PROFILE,
+    MAX_FORMAT0_PAIRS,
     MAX_LEGACY_PAIRS,
     REMOVED_REASON_BELOW_MIN_ABS_VALUE,
     REMOVED_REASON_OVER_MAX_PAIRS,
 )
-from .exceptions import LegacyKernError, NoGposKernError, ReservedPairsOverflowError
+from .exceptions import (
+    LegacyKernError,
+    ReservedPairsOverflowError,
+    VariableFontError,
+)
 from .gpos import kern_lookups
 from .reduce import reduce_legacy_kern_pairs
 from .whitelist import unicode_glyph_map
@@ -110,24 +115,43 @@ def apply_legacy_kern(
 
     :param font: a compiled static :class:`~fontTools.ttLib.TTFont` (TTF or
         OTF/CFF). The font is mutated in place; GPOS is left untouched.
-    :param max_pairs: hard cap for the single format-0 subtable.
+        Variable fonts are refused (see ``strict``): the legacy table could
+        only encode the default instance -- derive it from exported static
+        instances instead.
+    :param max_pairs: hard cap for the single format-0 subtable; must be
+        between 1 and ``MAX_FORMAT0_PAIRS`` (10 920), the capacity of the
+        subtable's 16-bit length field.
     :param min_abs_value: value-pruning threshold at UPM 1000, scaled to the
         font's real unitsPerEm internally.
     :param profile: coverage profile (only ``"latin-extended-text"`` for now).
-    :param strict: when False (default) a font without usable kerning yields a
+    :param strict: when False (default) a font whose kerning cannot be derived
+        (no usable GPOS kern, no cmap, malformed GPOS, variable font) yields a
         ``LegacyKernResult(applied=False, reason=...)`` instead of raising, so a
         batch never fails on one font. When True the typed exceptions propagate.
+        Invalid arguments (``max_pairs`` out of range, negative
+        ``min_abs_value``, unknown ``profile``) raise :class:`ValueError`
+        regardless of ``strict``.
     :returns: :class:`LegacyKernResult`
     """
+    if not 1 <= max_pairs <= MAX_FORMAT0_PAIRS:
+        raise ValueError(
+            f"max_pairs must be between 1 and {MAX_FORMAT0_PAIRS} (the format-0 "
+            f"subtable's 16-bit length capacity); got {max_pairs}."
+        )
+
     try:
+        if "fvar" in font:
+            raise VariableFontError(
+                "variable font (fvar table present): derive the legacy kern "
+                "from each exported static instance instead."
+            )
         lookups = kern_lookups(font)
-    except NoGposKernError as exc:
+        unicode_map = unicode_glyph_map(font)
+        pairs, pair_groups = build_legacy_kern_pairs(font, profile, lookups, unicode_map)
+    except LegacyKernError as exc:
         if strict:
             raise
         return LegacyKernResult(applied=False, reason=str(exc), profile=profile)
-
-    unicode_map = unicode_glyph_map(font)
-    pairs, pair_groups = build_legacy_kern_pairs(font, profile, lookups, unicode_map)
     if not pairs:
         reason = "no legacy kern candidates in the whitelist"
         if strict:

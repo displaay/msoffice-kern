@@ -46,7 +46,7 @@ def prune_pairs_by_min_abs_value(
     protected_pairs: tuple[tuple[str, str], ...] = SAMPLE_PAIRS,
 ) -> dict[tuple[str, str], int]:
     if min_abs_value < 0:
-        raise ValueError("--min-abs-value must be non-negative.")
+        raise ValueError("min_abs_value must be non-negative.")
 
     protected = set(protected_pairs)
     return {

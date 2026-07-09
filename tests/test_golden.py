@@ -16,7 +16,7 @@ from fontTools import __version__ as fonttools_version
 from fontTools.ttLib import TTFont  # noqa: F401  (kept for parity / debugging)
 from test_kern_selection import build_test_font, roundtrip
 
-import displaay_msoffice_kern as dmk
+import msoffice_kern as dmk
 
 GOLDEN_DIR = os.path.join(os.path.dirname(__file__), "golden")
 
