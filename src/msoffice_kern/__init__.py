@@ -78,7 +78,7 @@ from .whitelist import (
 )
 from .write import replace_legacy_kern
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 
 # Public API, split into two stability tiers. Everything here is importable;
 # the tiers document intent, not access:

@@ -4,9 +4,10 @@ All notable changes to this project are documented in this file. The format is
 based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the
 project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.1.0] - 2026-07-09
+## [0.1.1] - 2026-07-09
 
-Initial release.
+Initial public release. (The version 0.1.0 exists only as an internal
+pre-release git tag on the initial commit and was never published.)
 
 - `apply_legacy_kern`: derive a PowerPoint/MS Office-safe format-0 `kern`
   table from a static font's GPOS kerning, leaving GPOS untouched.
